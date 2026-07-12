@@ -261,6 +261,25 @@ def mcp_tools_definitions(include_local: bool = True) -> list[Tool]:
                 },
             ),
             Tool(
+                name="dub_from_url",
+                description=(
+                    "Dub a video from a URL — YouTube, TikTok, Instagram or Facebook — into another "
+                    "language, keeping the original voice. Accepts any supported platform link. Returns "
+                    "a job; poll get_job_status, then get_download_url. Consumes credits."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "required": ["url", "target_lang"],
+                    "properties": {
+                        "url": {"type": "string", "description": "YouTube, TikTok, Instagram or Facebook video URL"},
+                        "source_lang": {"type": "string", "default": "auto"},
+                        "target_lang": {"type": "string", "description": "Target language code, e.g. es, tr, ar"},
+                        "burn_subtitles": {"type": "boolean", "default": False},
+                        "lipsync": {"type": "boolean", "default": False},
+                    },
+                },
+            ),
+            Tool(
                 name="list_voices",
                 description=(
                     "List available TTS voices — 170+ ready-made presets plus the user's own cloned "
@@ -462,6 +481,16 @@ def build_server(get_api_key, include_local: bool = True) -> Server:
                 if name == "remix_video":
                     payload = {k: v for k, v in arguments.items() if k != "job_id" and v is not None}
                     r = await http.post(f"/videos/{arguments['job_id']}/remix", json=payload)
+                    return _wrap(r)
+                if name == "dub_from_url":
+                    payload = {k: v for k, v in {
+                        "url": arguments["url"],
+                        "source_lang": arguments.get("source_lang", "auto"),
+                        "target_lang": arguments["target_lang"],
+                        "burn_subtitles": bool(arguments.get("burn_subtitles", False)),
+                        "lipsync": bool(arguments.get("lipsync", False)),
+                    }.items() if v not in (None, "")}
+                    r = await http.post("/videos/from-link", json=payload)
                     return _wrap(r)
                 if name == "list_voices":
                     r = await http.get("/voices")
