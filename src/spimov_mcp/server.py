@@ -260,6 +260,33 @@ def mcp_tools_definitions(include_local: bool = True) -> list[Tool]:
                     },
                 },
             ),
+            Tool(
+                name="start_signup",
+                description=(
+                    "Sign a NEW user up to Spimov from here — no browser config or connector setup. "
+                    "Give the user's email; returns a verify_url they open in a browser to create their "
+                    "account (and optionally pay for a plan). No API key required. After they open it, "
+                    "call check_signup with the returned device_code to receive an API key."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "required": ["email"],
+                    "properties": {"email": {"type": "string", "description": "The user's email address"}},
+                },
+            ),
+            Tool(
+                name="check_signup",
+                description=(
+                    "Poll after start_signup. Given the device_code, returns {status}. When the user has "
+                    "opened the verify_url, status becomes 'ready' and includes an api_key — store it and "
+                    "use it for every other tool. 'pending' means keep waiting; 'expired' means restart."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "required": ["device_code"],
+                    "properties": {"device_code": {"type": "string"}},
+                },
+            ),
         ]
     if not include_local:
         tools = [t for t in tools if t.name not in LOCAL_ONLY_TOOLS]
@@ -285,6 +312,19 @@ def build_server(get_api_key, include_local: bool = True) -> Server:
                 {"error": "local_only_tool", "tool": name,
                  "hint": "This tool needs local filesystem access; use the stdio transport (pip install spimov-mcp)."}
             ))]
+        # ── Public onboarding tools (no API key required) ──────────────
+        if name in ("start_signup", "check_signup"):
+            onb_base = DEFAULT_API_BASE.rsplit("/api/", 1)[0] + "/api/mcp-onboard"
+            async with httpx.AsyncClient(base_url=onb_base, timeout=30.0) as oc:
+                try:
+                    if name == "start_signup":
+                        r = await oc.post("/start", json={"email": arguments["email"]})
+                    else:
+                        r = await oc.post("/check", json={"device_code": arguments["device_code"]})
+                    return _wrap(r)
+                except httpx.HTTPError as exc:
+                    return [TextContent(type="text", text=json.dumps({"error": "transport_error", "detail": str(exc)}))]
+
         api_key = get_api_key()
         if not api_key and name != "list_languages":
             return [TextContent(type="text", text=json.dumps(
