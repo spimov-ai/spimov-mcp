@@ -261,6 +261,32 @@ def mcp_tools_definitions(include_local: bool = True) -> list[Tool]:
                 },
             ),
             Tool(
+                name="list_voices",
+                description=(
+                    "List available TTS voices — 170+ ready-made presets plus the user's own cloned "
+                    "voices. Returns each voice's id, name and language. Use a voice id with text_to_speech."
+                ),
+                inputSchema={"type": "object", "properties": {}},
+            ),
+            Tool(
+                name="text_to_speech",
+                description=(
+                    "Generate speech audio from text with a chosen voice (Voice Studio / TTS). Get a "
+                    "voice_id from list_voices — presets need no setup. Returns a downloadable audio URL. "
+                    "Consumes credits."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "required": ["text", "voice_id"],
+                    "properties": {
+                        "text": {"type": "string"},
+                        "voice_id": {"type": "string", "description": "A voice id from list_voices"},
+                        "language": {"type": "string", "default": "en"},
+                        "emotion": {"type": "string", "default": "neutral"},
+                    },
+                },
+            ),
+            Tool(
                 name="create_checkout_link",
                 description=(
                     "Get a DodoPayments hosted-checkout URL so the user can upgrade their plan "
@@ -436,6 +462,18 @@ def build_server(get_api_key, include_local: bool = True) -> Server:
                 if name == "remix_video":
                     payload = {k: v for k, v in arguments.items() if k != "job_id" and v is not None}
                     r = await http.post(f"/videos/{arguments['job_id']}/remix", json=payload)
+                    return _wrap(r)
+                if name == "list_voices":
+                    r = await http.get("/voices")
+                    return _wrap(r)
+                if name == "text_to_speech":
+                    r = await http.post("/tts", json={
+                        "text": arguments["text"],
+                        "voice_id": arguments["voice_id"],
+                        "language": arguments.get("language", "en"),
+                        "engine": arguments.get("engine", "c2o"),
+                        "emotion": arguments.get("emotion", "neutral"),
+                    })
                     return _wrap(r)
                 if name == "create_checkout_link":
                     r = await http.post("/checkout", json={
