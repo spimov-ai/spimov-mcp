@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spimov-mcp"
-version = "0.4.0"
+version = "0.5.0"
 description = "Spimov MCP server — dub videos via Claude Desktop / Claude Code / any MCP client"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -29,7 +29,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://spimov.com"
-Repository = "https://github.com/erdememinaga/spimov-mcp"
+Repository = "https://github.com/spimov-ai/spimov-mcp"
 Issues = "https://github.com/erdememinaga/spimov-mcp/issues"
 
 [project.scripts]
