@@ -30,7 +30,7 @@ dependencies = [
 [project.urls]
 Homepage = "https://spimov.com"
 Repository = "https://github.com/spimov-ai/spimov-mcp"
-Issues = "https://github.com/erdememinaga/spimov-mcp/issues"
+Issues = "https://github.com/spimov-ai/spimov-mcp/issues"
 
 [project.scripts]
 spimov-mcp = "spimov_mcp.stdio_main:main"
