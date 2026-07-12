@@ -261,6 +261,40 @@ def mcp_tools_definitions(include_local: bool = True) -> list[Tool]:
                 },
             ),
             Tool(
+                name="create_checkout_link",
+                description=(
+                    "Get a DodoPayments hosted-checkout URL so the user can upgrade their plan "
+                    "(pro/max/max_plus). Returns a URL the user opens in a browser to pay — nothing is "
+                    "charged here. Confirm the plan and price with the user before calling."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "required": ["plan"],
+                    "properties": {
+                        "plan": {"type": "string", "enum": ["pro", "max", "max_plus"]},
+                        "billing": {"type": "string", "enum": ["monthly", "yearly"], "default": "monthly"},
+                    },
+                },
+            ),
+            Tool(
+                name="translate_srt",
+                description=(
+                    "Translate SRT subtitle text into another language and return the translated SRT. "
+                    "Pass the full .srt content as text. mode=basic (fast, line-by-line) or smart "
+                    "(Gemini, whole-file context so terms stay consistent). Consumes credits."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "required": ["srt_content", "target_lang"],
+                    "properties": {
+                        "srt_content": {"type": "string", "description": "Full .srt file content"},
+                        "target_lang": {"type": "string", "description": "Target language code, e.g. tr, es, ar"},
+                        "source_lang": {"type": "string", "default": "auto"},
+                        "mode": {"type": "string", "enum": ["basic", "smart"], "default": "basic"},
+                    },
+                },
+            ),
+            Tool(
                 name="start_signup",
                 description=(
                     "Sign a NEW user up to Spimov from here — no browser config or connector setup. "
@@ -402,6 +436,20 @@ def build_server(get_api_key, include_local: bool = True) -> Server:
                 if name == "remix_video":
                     payload = {k: v for k, v in arguments.items() if k != "job_id" and v is not None}
                     r = await http.post(f"/videos/{arguments['job_id']}/remix", json=payload)
+                    return _wrap(r)
+                if name == "create_checkout_link":
+                    r = await http.post("/checkout", json={
+                        "plan": arguments["plan"],
+                        "billing": arguments.get("billing", "monthly"),
+                    })
+                    return _wrap(r)
+                if name == "translate_srt":
+                    r = await http.post("/translate-srt", json={
+                        "srt_content": arguments["srt_content"],
+                        "target_lang": arguments["target_lang"],
+                        "source_lang": arguments.get("source_lang", "auto"),
+                        "mode": arguments.get("mode", "basic"),
+                    })
                     return _wrap(r)
                 return [TextContent(type="text", text=json.dumps({"error": f"unknown tool: {name}"}))]
             except httpx.HTTPError as exc:
