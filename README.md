@@ -92,7 +92,7 @@ https://mcp.spimov.com/mcp?api_key=spk_live_xxxxxxxxxxxxxxxxxxxxxxxx
 | `list_languages` | Source + target language list (17 target languages). |
 | `get_quota` | Current minute & request usage vs. plan limits. |
 
-Dubbing tools (`create_dub`, `dub_youtube`) accept an optional `tts_provider`: `xtts` (quality voice, **default**), `chatterbox` (emotion voice), or `elevenlabs` (paid).
+Dubbing tools (`create_dub`, `dub_youtube`) accept an optional(quality voice, **default**), `chatterbox` (emotion voice), or `elevenlabs` (paid).
 
 ## 4. Override the API base (dev)
 
