@@ -16,6 +16,18 @@ from mcp.server import Server
 from mcp.types import TextContent, Tool
 
 DEFAULT_API_BASE = os.environ.get("SPIMOV_API_BASE", "https://spimov.com/api/v1")
+APP_BASE = os.environ.get("SPIMOV_APP_BASE", "https://app.spimov.com").rstrip("/")
+
+# Studio deep-links: features that need a browser (file upload, visual editing,
+# multi-step wizards) are done on the site — the tool hands back a link.
+STUDIO_PATHS = {
+    "video_generation": "/ai-studio",
+    "video_cutter": "/video-cutter",
+    "ugc_ad": "/ugc-studio",
+    "ad": "/ad-studio",
+    "video_edit": "/video-edit",
+    "youtube_automation": "/youtube-studio",
+}
 
 
 def _client(api_key: str) -> httpx.AsyncClient:
@@ -366,6 +378,28 @@ def mcp_tools_definitions(include_local: bool = True) -> list[Tool]:
                     "properties": {"device_code": {"type": "string"}},
                 },
             ),
+            Tool(
+                name="open_studio",
+                description=(
+                    "Get a link to a Spimov studio the user finishes in their browser. Use for features "
+                    "that need visual editing or file uploads and can't run headlessly: AI video generation "
+                    "(text-to-video), the video cutter, UGC/ad video (needs a face photo), video editing, and "
+                    "YouTube automation. Returns a URL to open. No API key required. Pass `prompt` to relay "
+                    "what the user wants to make — it is shown back to the user to paste, not auto-filled."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "required": ["feature"],
+                    "properties": {
+                        "feature": {
+                            "type": "string",
+                            "enum": list(STUDIO_PATHS.keys()),
+                            "description": "video_generation | video_cutter | ugc_ad | ad | video_edit | youtube_automation",
+                        },
+                        "prompt": {"type": "string", "description": "Optional: what the user wants to create (relayed for them to paste)"},
+                    },
+                },
+            ),
         ]
     if not include_local:
         tools = [t for t in tools if t.name not in LOCAL_ONLY_TOOLS]
@@ -390,6 +424,22 @@ def build_server(get_api_key, include_local: bool = True) -> Server:
             return [TextContent(type="text", text=json.dumps(
                 {"error": "local_only_tool", "tool": name,
                  "hint": "This tool needs local filesystem access; use the stdio transport (pip install spimov-mcp)."}
+            ))]
+        # ── Studio deep-link (browser hand-off, no API key required) ───
+        if name == "open_studio":
+            feature = arguments.get("feature", "")
+            path = STUDIO_PATHS.get(feature)
+            if not path:
+                return [TextContent(type="text", text=json.dumps(
+                    {"error": "unknown_feature", "features": list(STUDIO_PATHS.keys())}
+                ))]
+            url = APP_BASE + path
+            note = (arguments.get("prompt") or "").strip()
+            msg = f"Open {url} to continue in your browser."
+            if note:
+                msg += f' When it loads, use this: "{note}"'
+            return [TextContent(type="text", text=json.dumps(
+                {"url": url, "feature": feature, "message": msg}
             ))]
         # ── Public onboarding tools (no API key required) ──────────────
         if name in ("start_signup", "check_signup"):
